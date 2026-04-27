@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
+
+# Build output
+build/
+dist/
+*.spec.bak
+
+# Installer output
+installer/output/
+installer/Output/
+*.exe
+
+# Local binaries - add these manually when building
+vendor/yt-dlp.exe
+vendor/ffmpeg.exe
+vendor/ffprobe.exe
+vendor/*.dll
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
