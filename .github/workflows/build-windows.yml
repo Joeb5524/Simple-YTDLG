@@ -4,8 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -20,19 +24,59 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Validate release tag version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        run: |
+          $tagVersion = $env:GITHUB_REF_NAME -replace '^v', ''
+          $appSource = Get-Content "simple_ytdlp\app.py" -Raw
+          if ($appSource -notmatch 'APP_VERSION\s*=\s*"([^"]+)"') {
+            throw "Could not read APP_VERSION from simple_ytdlp\app.py"
+          }
+          $appVersion = $Matches[1]
+          if ($tagVersion -ne $appVersion) {
+            throw "Release tag $env:GITHUB_REF_NAME does not match APP_VERSION $appVersion"
+          }
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Download yt-dlp
+      - name: Download downloader tools
         run: powershell -ExecutionPolicy Bypass -File scripts/download_tools.ps1
 
-      - name: Build app folder
-        run: powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build app folder and installer
+        run: powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1 -BuildInstaller
 
       - name: Upload app folder
         uses: actions/upload-artifact@v4
         with:
           name: SimpleYTDLP-Windows-App-Folder
           path: dist/SimpleYTDLP
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimpleYTDLP-Windows-Installer
+          path: installer/output/*.exe
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $installer = Get-ChildItem "installer\output\*.exe" | Select-Object -First 1
+          if (-not $installer) {
+            throw "No installer was found in installer\output"
+          }
+
+          gh release create $env:GITHUB_REF_NAME `
+            $installer.FullName `
+            --title "SimpleYTDLP $env:GITHUB_REF_NAME" `
+            --generate-notes `
+            --verify-tag

@@ -1,12 +1,13 @@
 # Build and Install SimpleYTDLP
 
-This project uses PyInstaller for both the Windows app folder and the optional setup executable. Inno Setup is not required for the normal build.
+This project uses PyInstaller for the Windows app folder and Inno Setup for the Windows installer/uninstaller.
 
 ## Prerequisites
 
 - Windows
 - Python 3.11 or newer
 - PowerShell
+- Inno Setup 6, required only when building the installer
 - Optional but recommended: `yt-dlp.exe`, `ffmpeg.exe`, and `ffprobe.exe` in `vendor\`
 
 The build script creates `.venv` automatically and installs the Python build dependency from `requirements.txt`.
@@ -21,13 +22,19 @@ vendor\ffmpeg.exe
 vendor\ffprobe.exe
 ```
 
-To download only `yt-dlp.exe`:
+To download `yt-dlp.exe`, `ffmpeg.exe`, and `ffprobe.exe`:
 
 ```powershell
 .\scripts\download_tools.ps1
 ```
 
-Add FFmpeg manually. Without FFmpeg, some MP4 and MP3 downloads may fail on machines that do not already have FFmpeg in `PATH`.
+The script uses the latest `yt-dlp` Windows binary and the latest Windows GPL FFmpeg build from `yt-dlp/FFmpeg-Builds`. To skip FFmpeg and add your own build manually, run:
+
+```powershell
+.\scripts\download_tools.ps1 -SkipFFmpeg
+```
+
+Without FFmpeg, some MP4 and MP3 downloads may fail on machines that do not already have FFmpeg in `PATH`.
 
 ## 2. Build the app folder
 
@@ -52,18 +59,22 @@ This folder includes the app, bundled vendor tools, assets, licence, and third-p
 Output:
 
 ```text
-installer\output\dist\SimpleYTDLP_Setup.exe
+installer\output\SimpleYTDLP_Setup_1.0.1.exe
 ```
 
-Distribute `SimpleYTDLP_Setup.exe` to end users.
+Distribute the versioned setup EXE, for example `SimpleYTDLP_Setup_1.0.1.exe`, to end users.
 
 ## What the installer does
 
 1. Extracts the bundled `dist\SimpleYTDLP\` app files.
-2. Installs to `C:\Program Files\SimpleYTDLP\` when writable.
-3. Falls back to `%APPDATA%\SimpleYTDLP\` when Program Files is not writable.
-4. Creates a Start Menu shortcut named **Simple Video Downloader**.
-5. Offers to launch the app after installation.
+2. Installs to Program Files for all users, or per-user when the user chooses the non-admin install mode.
+3. Creates a Start Menu shortcut named **Simple Video Downloader**.
+4. Optionally creates a desktop shortcut.
+5. Registers the app in Windows **Apps & features** / **Add or remove programs**.
+6. Installs a standard Windows uninstaller.
+7. Offers to launch the app after installation.
+
+Running a newer installer over an existing installation upgrades the app in place. User settings and download history are stored outside the install directory and are preserved.
 
 ## Clean build output
 
@@ -85,6 +96,16 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 Then run the build command again.
 
+### Inno Setup is missing
+
+Install Inno Setup 6, then run the installer build again:
+
+```powershell
+.\scripts\build_windows.ps1 -BuildInstaller
+```
+
+The build script looks for `ISCC.exe` in `PATH`, `C:\Program Files\Inno Setup 6\`, and `C:\Program Files (x86)\Inno Setup 6\`.
+
 ### `Application files not found`
 
 Run the installer build from the repository root:
@@ -93,7 +114,7 @@ Run the installer build from the repository root:
 .\scripts\build_windows.ps1 -BuildInstaller
 ```
 
-The installer expects the app folder to exist at `dist\SimpleYTDLP\` before it is packaged.
+The installer expects the app folder to exist at `dist\SimpleYTDLP\` before it is packaged. The standard build command creates it automatically before invoking Inno Setup.
 
 ### Installer is not self-contained
 
@@ -117,9 +138,21 @@ Rebuild with the current script:
 
 The build copies `assets\app.ico` into the app folder so the installed shortcut can use it.
 
-## Legacy Inno Setup file
+## Release checklist
 
-`installer\SimpleYTDLP.iss` is kept only as a legacy script. The supported build path is:
+1. Update `APP_VERSION` in `simple_ytdlp\app.py`.
+2. Run `.\scripts\download_tools.ps1` or put current `yt-dlp.exe`, `ffmpeg.exe`, and `ffprobe.exe` in `vendor\`.
+3. Commit and push the changes.
+4. Create and push a matching version tag:
+
+```powershell
+git tag v1.0.1
+git push <remote> v1.0.1
+```
+
+GitHub Actions validates that `v1.0.1` matches `APP_VERSION = "1.0.1"`, builds the installer, creates a GitHub Release, and attaches the installer.
+
+For a local test build, run:
 
 ```powershell
 .\scripts\build_windows.ps1 -BuildInstaller

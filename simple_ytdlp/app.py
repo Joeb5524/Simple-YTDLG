@@ -37,7 +37,7 @@ from tkinter import filedialog, messagebox, ttk
 
 APP_NAME = "SimpleYTDLP"
 APP_DISPLAY_NAME = "Simple Video Downloader"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 
 URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 PERCENT_RE = re.compile(r"\[download\]\s+(\d{1,3}(?:\.\d+)?)%")

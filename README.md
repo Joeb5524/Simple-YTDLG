@@ -34,7 +34,7 @@ pip install -r requirements.txt
 python run.py
 ```
 
-For development, the app can use `yt-dlp` and FFmpeg from your system `PATH`. For a packaged release, bundle the downloader tools in `vendor\` so the installer is self-contained.
+For development, the app can use `yt-dlp` and FFmpeg from your system `PATH`. For a packaged release, bundle the downloader tools in `vendor\` so the installed app is self-contained.
 
 ## Bundle downloader tools
 
@@ -46,13 +46,13 @@ vendor\ffmpeg.exe
 vendor\ffprobe.exe
 ```
 
-You can download `yt-dlp.exe` with:
+You can download `yt-dlp.exe`, `ffmpeg.exe`, and `ffprobe.exe` with:
 
 ```powershell
 .\scripts\download_tools.ps1
 ```
 
-FFmpeg is strongly recommended because MP4 merging and MP3 conversion usually need it. Add `ffmpeg.exe` and `ffprobe.exe` manually from the FFmpeg build you choose to distribute.
+The script uses the latest `yt-dlp` Windows binary and the latest Windows GPL FFmpeg build from `yt-dlp/FFmpeg-Builds`. To skip FFmpeg and add your own build manually, run `.\scripts\download_tools.ps1 -SkipFFmpeg`.
 
 ## Build the app
 
@@ -72,7 +72,7 @@ You can distribute the whole `dist\SimpleYTDLP\` folder directly if you do not n
 
 ## Build the installer
 
-To build the app and the self-contained installer:
+Install [Inno Setup 6](https://jrsoftware.org/isinfo.php), then build the app and installer:
 
 ```powershell
 .\scripts\build_windows.ps1 -BuildInstaller
@@ -81,12 +81,23 @@ To build the app and the self-contained installer:
 This creates:
 
 ```text
-installer\output\dist\SimpleYTDLP_Setup.exe
+installer\output\SimpleYTDLP_Setup_1.0.1.exe
 ```
 
-The installer copies the app to `C:\Program Files\SimpleYTDLP\` when possible, falls back to `%APPDATA%\SimpleYTDLP\` when Program Files is not writable, creates a Start Menu shortcut, and offers to launch the app when installation finishes.
+The installer supports normal Windows install/upgrade/uninstall behavior, including Add/Remove Programs, Start Menu shortcuts, optional desktop shortcut, and launching the app after setup.
 
 See [BUILD_INSTALLER.md](BUILD_INSTALLER.md) for the full packaging checklist and troubleshooting notes.
+
+## Publish a release
+
+GitHub Actions builds and publishes the installer automatically when you push a version tag. Make sure the tag matches `APP_VERSION` in `simple_ytdlp\app.py`:
+
+```powershell
+git tag v1.0.1
+git push <remote> v1.0.1
+```
+
+The workflow downloads the bundled tools, builds the installer, creates a GitHub Release, and attaches the versioned installer from `installer\output\`.
 
 ## Project layout
 
@@ -100,7 +111,6 @@ SimpleYTDLP/
 |-- installer/
 |   `-- SimpleYTDLP.iss
 |-- scripts/
-|   |-- build_installer.py
 |   |-- build_windows.ps1
 |   |-- clean.ps1
 |   `-- download_tools.ps1
@@ -112,7 +122,7 @@ SimpleYTDLP/
 `-- README.md
 ```
 
-`installer\SimpleYTDLP.iss` is kept only as a legacy Inno Setup script. The normal installer path is `.\scripts\build_windows.ps1 -BuildInstaller`.
+`installer\SimpleYTDLP.iss` is the installer definition used by `.\scripts\build_windows.ps1 -BuildInstaller`.
 
 ## Release notes
 

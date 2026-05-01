@@ -9,6 +9,7 @@ venv/
 # Build output
 build/
 dist/
+*.spec
 *.spec.bak
 
 # Installer output

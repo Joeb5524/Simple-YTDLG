@@ -8,7 +8,7 @@ If you distribute `yt-dlp.exe` with the installer, include the licence and notic
 
 ## FFmpeg
 
-If you distribute `ffmpeg.exe` and `ffprobe.exe` with the installer, make sure your FFmpeg build and distribution method comply with the licence terms of that build.
+If you distribute `ffmpeg.exe` and `ffprobe.exe` with the installer, make sure your FFmpeg build and distribution method comply with the licence terms of that build. The helper script downloads a GPL Windows build from `yt-dlp/FFmpeg-Builds` by default.
 
 ## User responsibility
 
