@@ -20,6 +20,8 @@ The app intentionally hides advanced `yt-dlp` options such as format codes, cook
 - Clipboard link detection
 - Cancel active download
 - Prevents accidental closing while a download is running
+- Dark mode toggle
+- App update check that opens the latest GitHub Release
 - Optional details/log panel for troubleshooting
 - `Check / Update Downloader` button for bundled or PATH-based `yt-dlp`
 
@@ -81,7 +83,7 @@ Install [Inno Setup 6](https://jrsoftware.org/isinfo.php), then build the app an
 This creates:
 
 ```text
-installer\output\SimpleYTDLP_Setup_1.0.1.exe
+installer\output\SimpleYTDLP_Setup_1.0.2.exe
 ```
 
 The installer supports normal Windows install/upgrade/uninstall behavior, including Add/Remove Programs, Start Menu shortcuts, optional desktop shortcut, and launching the app after setup.
@@ -93,8 +95,8 @@ See [BUILD_INSTALLER.md](BUILD_INSTALLER.md) for the full packaging checklist an
 GitHub Actions builds and publishes the installer automatically when you push a version tag. Make sure the tag matches `APP_VERSION` in `simple_ytdlp\app.py`:
 
 ```powershell
-git tag v1.0.1
-git push <remote> v1.0.1
+git tag v1.0.2
+git push <remote> v1.0.2
 ```
 
 The workflow downloads the bundled tools, builds the installer, creates a GitHub Release, and attaches the versioned installer from `installer\output\`.

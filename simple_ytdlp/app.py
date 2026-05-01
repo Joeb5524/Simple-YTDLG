@@ -27,6 +27,8 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 import webbrowser
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -37,7 +39,9 @@ from tkinter import filedialog, messagebox, ttk
 
 APP_NAME = "SimpleYTDLP"
 APP_DISPLAY_NAME = "Simple Video Downloader"
-APP_VERSION = "1.0.1"
+APP_VERSION = "1.0.2"
+APP_RELEASES_URL = "https://github.com/Joeb5524/Simple-YTDLG/releases/latest"
+APP_RELEASES_API_URL = "https://api.github.com/repos/Joeb5524/Simple-YTDLG/releases/latest"
 
 URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 PERCENT_RE = re.compile(r"\[download\]\s+(\d{1,3}(?:\.\d+)?)%")
@@ -132,6 +136,7 @@ class SimpleYTDLPApp(tk.Tk):
             "mode": "video",
             "quality": "best",
             "show_details": False,
+            "dark_mode": False,
         }
         try:
             if self.paths.settings_file.exists():
@@ -148,6 +153,7 @@ class SimpleYTDLPApp(tk.Tk):
                 "mode": self.mode_var.get(),
                 "quality": self.quality_var.get(),
                 "show_details": self.details_visible,
+                "dark_mode": self.dark_mode_var.get() if hasattr(self, "dark_mode_var") else False,
             }
         )
         self.paths.settings_file.write_text(json.dumps(self.settings, indent=2), encoding="utf-8")
@@ -187,8 +193,49 @@ class SimpleYTDLPApp(tk.Tk):
         self.minsize(760, 540)
         self.geometry(f"{width}x{height}")
 
+    def dark_mode_enabled(self) -> bool:
+        if hasattr(self, "dark_mode_var"):
+            return bool(self.dark_mode_var.get())
+        return bool(self.settings.get("dark_mode", False))
+
+    def theme_colors(self) -> dict[str, str]:
+        if self.dark_mode_enabled():
+            return {
+                "window": "#101418",
+                "card": "#1a2027",
+                "field": "#0f141a",
+                "field_alt": "#141a21",
+                "text": "#e5edf4",
+                "heading": "#f8fafc",
+                "subtle": "#9aa8b7",
+                "border": "#3c4652",
+                "button": "#27313d",
+                "button_active": "#334153",
+                "accent": "#2f6fed",
+                "accent_active": "#3b7cff",
+                "disabled": "#7f8a96",
+                "selection": "#2f6fed",
+            }
+        return {
+            "window": "#f4f6f8",
+            "card": "#ffffff",
+            "field": "#ffffff",
+            "field_alt": "#ffffff",
+            "text": "#17212b",
+            "heading": "#0f172a",
+            "subtle": "#475569",
+            "border": "#cbd5e1",
+            "button": "#e2e8f0",
+            "button_active": "#cbd5e1",
+            "accent": "#2563eb",
+            "accent_active": "#1d4ed8",
+            "disabled": "#94a3b8",
+            "selection": "#2563eb",
+        }
+
     def setup_style(self) -> None:
-        self.configure(bg="#f4f6f8")
+        self.colors = self.theme_colors()
+        self.configure(bg=self.colors["window"])
         style = ttk.Style(self)
         if "clam" in style.theme_names():
             style.theme_use("clam")
@@ -200,23 +247,74 @@ class SimpleYTDLPApp(tk.Tk):
         self.option_add("*Font", base_font)
         self.option_add("*TCombobox*Listbox.font", base_font)
 
-        style.configure("TFrame", background="#f4f6f8")
-        style.configure("Card.TFrame", background="#ffffff", relief="flat")
-        style.configure("TLabel", background="#f4f6f8", foreground="#17212b", font=base_font)
-        style.configure("Card.TLabel", background="#ffffff", foreground="#17212b", font=base_font)
-        style.configure("Heading.TLabel", background="#f4f6f8", foreground="#0f172a", font=heading_font)
-        style.configure("Subtle.TLabel", background="#f4f6f8", foreground="#475569", font=("Segoe UI", 11))
-        style.configure("CardSubtle.TLabel", background="#ffffff", foreground="#475569", font=("Segoe UI", 11))
-        style.configure("TButton", font=button_font, padding=(14, 10))
-        style.configure("Primary.TButton", font=("Segoe UI", 15, "bold"), padding=(20, 14))
+        style.configure("TFrame", background=self.colors["window"])
+        style.configure("Card.TFrame", background=self.colors["card"], relief="flat")
+        style.configure("TLabel", background=self.colors["window"], foreground=self.colors["text"], font=base_font)
+        style.configure("Card.TLabel", background=self.colors["card"], foreground=self.colors["text"], font=base_font)
+        style.configure("Heading.TLabel", background=self.colors["window"], foreground=self.colors["heading"], font=heading_font)
+        style.configure("Subtle.TLabel", background=self.colors["window"], foreground=self.colors["subtle"], font=("Segoe UI", 11))
+        style.configure("CardSubtle.TLabel", background=self.colors["card"], foreground=self.colors["subtle"], font=("Segoe UI", 11))
+        style.configure(
+            "TButton",
+            font=button_font,
+            padding=(14, 10),
+            background=self.colors["button"],
+            foreground=self.colors["text"],
+            bordercolor=self.colors["border"],
+        )
+        style.map(
+            "TButton",
+            background=[("active", self.colors["button_active"]), ("disabled", self.colors["button"])],
+            foreground=[("disabled", self.colors["disabled"])],
+        )
+        style.configure(
+            "Primary.TButton",
+            font=("Segoe UI", 15, "bold"),
+            padding=(20, 14),
+            background=self.colors["accent"],
+            foreground="#ffffff",
+        )
+        style.map(
+            "Primary.TButton",
+            background=[("active", self.colors["accent_active"]), ("disabled", self.colors["button"])],
+            foreground=[("disabled", self.colors["disabled"])],
+        )
         style.configure("Danger.TButton", font=button_font, padding=(14, 10))
-        style.configure("TRadiobutton", background="#ffffff", foreground="#17212b", font=base_font, padding=8)
-        style.configure("Horizontal.TProgressbar", thickness=28)
-        style.configure("Treeview", font=("Segoe UI", 11), rowheight=32)
-        style.configure("Treeview.Heading", font=("Segoe UI", 11, "bold"))
+        style.configure("TRadiobutton", background=self.colors["card"], foreground=self.colors["text"], font=base_font, padding=8)
+        style.configure("TCheckbutton", background=self.colors["card"], foreground=self.colors["text"], font=base_font, padding=8)
+        style.map("TCheckbutton", background=[("active", self.colors["card"])], foreground=[("disabled", self.colors["disabled"])])
+        style.configure(
+            "TEntry",
+            fieldbackground=self.colors["field"],
+            foreground=self.colors["text"],
+            bordercolor=self.colors["border"],
+            insertcolor=self.colors["text"],
+        )
+        style.configure(
+            "Horizontal.TProgressbar",
+            thickness=28,
+            background=self.colors["accent"],
+            troughcolor=self.colors["field_alt"],
+        )
+        style.configure(
+            "Treeview",
+            font=("Segoe UI", 11),
+            rowheight=32,
+            background=self.colors["field"],
+            fieldbackground=self.colors["field"],
+            foreground=self.colors["text"],
+            bordercolor=self.colors["border"],
+        )
+        style.configure(
+            "Treeview.Heading",
+            font=("Segoe UI", 11, "bold"),
+            background=self.colors["field_alt"],
+            foreground=self.colors["text"],
+        )
+        style.map("Treeview", background=[("selected", self.colors["selection"])], foreground=[("selected", "#ffffff")])
 
     def build_ui(self) -> None:
-        self.ui_canvas = tk.Canvas(self, bg="#f4f6f8", highlightthickness=0)
+        self.ui_canvas = tk.Canvas(self, bg=self.colors["window"], highlightthickness=0)
         self.ui_scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.ui_canvas.yview)
         self.ui_canvas.configure(yscrollcommand=self.ui_scrollbar.set)
         self.ui_scrollbar.pack(side="right", fill="y")
@@ -268,6 +366,7 @@ class SimpleYTDLPApp(tk.Tk):
         self.mode_var = tk.StringVar(value=self.settings.get("mode", "video"))
         self.quality_var = tk.StringVar(value=self.settings.get("quality", "best"))
         self.save_dir_var = tk.StringVar(value=self.settings.get("save_dir", str(self.paths.downloads)))
+        self.dark_mode_var = tk.BooleanVar(value=bool(self.settings.get("dark_mode", False)))
 
         ttk.Label(options_card, text="Download type", style="Card.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Radiobutton(options_card, text="Video file (MP4)", variable=self.mode_var, value="video").grid(
@@ -302,6 +401,12 @@ class SimpleYTDLPApp(tk.Tk):
         self.start_button.grid(row=0, column=0, sticky="ew")
         self.cancel_button = ttk.Button(primary_actions, text="Cancel", command=self.cancel_download, state="disabled")
         self.cancel_button.grid(row=1, column=0, sticky="ew", pady=(8, 0))
+        ttk.Checkbutton(
+            primary_actions,
+            text="Dark mode",
+            variable=self.dark_mode_var,
+            command=self.toggle_dark_mode,
+        ).grid(row=2, column=0, sticky="w", pady=(10, 0))
 
         actions_card = ttk.Frame(main, style="Card.TFrame", padding=16)
         actions_card.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 12))
@@ -332,6 +437,8 @@ class SimpleYTDLPApp(tk.Tk):
         )
         self.details_button = ttk.Button(secondary_actions, text="Show Details", command=self.toggle_details)
         self.details_button.grid(row=1, column=1, sticky="w", padx=(10, 0), pady=(10, 0))
+        self.check_app_button = ttk.Button(secondary_actions, text="Check App Updates", command=self.check_app_updates)
+        self.check_app_button.grid(row=2, column=0, sticky="w", pady=(10, 0))
 
         queue_card = ttk.Frame(main, style="Card.TFrame", padding=16)
         queue_card.grid(row=2, column=0, sticky="nsew", padx=(0, 12))
@@ -370,6 +477,7 @@ class SimpleYTDLPApp(tk.Tk):
         self.log_text.pack(fill="both", expand=True)
         if self.settings.get("show_details", False):
             self.toggle_details()
+        self.apply_widget_colors()
 
     def sync_scroll_region(self, _event: tk.Event) -> None:
         self.ui_canvas.configure(scrollregion=self.ui_canvas.bbox("all"))
@@ -416,6 +524,37 @@ class SimpleYTDLPApp(tk.Tk):
             self.details_frame.pack_forget()
         self.details_button.configure(text="Hide Details" if self.details_visible else "Show Details")
         self.save_settings()
+
+    def toggle_dark_mode(self) -> None:
+        self.setup_style()
+        self.apply_widget_colors()
+        self.save_settings()
+
+    def apply_widget_colors(self) -> None:
+        if hasattr(self, "ui_canvas"):
+            self.ui_canvas.configure(bg=self.colors["window"])
+        text_options = {
+            "bg": self.colors["field"],
+            "fg": self.colors["text"],
+            "insertbackground": self.colors["text"],
+            "selectbackground": self.colors["selection"],
+            "selectforeground": "#ffffff",
+            "highlightbackground": self.colors["border"],
+            "highlightcolor": self.colors["accent"],
+        }
+        if hasattr(self, "url_text"):
+            self.url_text.configure(**text_options)
+        if hasattr(self, "log_text"):
+            self.log_text.configure(**text_options)
+        if hasattr(self, "history_list"):
+            self.history_list.configure(
+                bg=self.colors["field"],
+                fg=self.colors["text"],
+                selectbackground=self.colors["selection"],
+                selectforeground="#ffffff",
+                highlightbackground=self.colors["border"],
+                highlightcolor=self.colors["accent"],
+            )
 
     def write_log(self, text: str) -> None:
         self.log_text.configure(state="normal")
@@ -700,6 +839,13 @@ class SimpleYTDLPApp(tk.Tk):
                     self.open_file_button.configure(state="normal")
                 elif kind == "info":
                     messagebox.showinfo(APP_DISPLAY_NAME, str(payload))
+                elif kind == "app_update_result":
+                    self.check_app_button.configure(state="normal")
+                    self.handle_app_update_result(payload)
+                elif kind == "app_update_error":
+                    self.check_app_button.configure(state="normal")
+                    self.status_var.set("Could not check for app updates.")
+                    messagebox.showerror(APP_DISPLAY_NAME, f"Could not check for app updates:\n\n{payload}")
                 elif kind == "done":
                     self.set_running(False)
                     self.progress_var.set(100 if not self.cancel_requested else 0)
@@ -725,6 +871,55 @@ class SimpleYTDLPApp(tk.Tk):
     # ------------------------------------------------------------------
     # Buttons and helpers
     # ------------------------------------------------------------------
+    def check_app_updates(self) -> None:
+        self.check_app_button.configure(state="disabled")
+        self.status_var.set("Checking for app updates...")
+
+        def check() -> None:
+            try:
+                request = urllib.request.Request(
+                    APP_RELEASES_API_URL,
+                    headers={
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": f"{APP_NAME}/{APP_VERSION}",
+                    },
+                )
+                with urllib.request.urlopen(request, timeout=20) as response:
+                    release = json.loads(response.read().decode("utf-8"))
+
+                tag_name = str(release.get("tag_name") or "")
+                latest_version = tag_name.lstrip("v")
+                release_url = str(release.get("html_url") or APP_RELEASES_URL)
+                payload = {
+                    "tag_name": tag_name,
+                    "latest_version": latest_version,
+                    "release_url": release_url,
+                    "is_newer": self.version_tuple(latest_version) > self.version_tuple(APP_VERSION),
+                }
+                self.message_queue.put(("app_update_result", payload))
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+                self.message_queue.put(("app_update_error", exc))
+
+        threading.Thread(target=check, daemon=True).start()
+
+    def handle_app_update_result(self, payload: object) -> None:
+        data = payload if isinstance(payload, dict) else {}
+        latest_version = str(data.get("latest_version") or "unknown")
+        release_url = str(data.get("release_url") or APP_RELEASES_URL)
+
+        if data.get("is_newer"):
+            self.status_var.set(f"App update available: {latest_version}.")
+            open_release = messagebox.askyesno(
+                APP_DISPLAY_NAME,
+                f"A newer version is available.\n\nInstalled: {APP_VERSION}\nLatest: {latest_version}\n\nOpen the download page?",
+            )
+            if open_release:
+                webbrowser.open(release_url)
+            return
+
+        self.status_var.set("App is up to date.")
+        messagebox.showinfo(APP_DISPLAY_NAME, f"You are up to date.\n\nInstalled version: {APP_VERSION}")
+
     def check_update_downloader(self) -> None:
         yt_dlp = self.find_yt_dlp()
         if yt_dlp is None:
@@ -810,6 +1005,13 @@ class SimpleYTDLPApp(tk.Tk):
     @staticmethod
     def shorten(text: str, max_len: int) -> str:
         return text if len(text) <= max_len else text[: max_len - 3] + "..."
+
+    @staticmethod
+    def version_tuple(version: str) -> tuple[int, int, int]:
+        parts = [int(part) for part in re.findall(r"\d+", version)[:3]]
+        while len(parts) < 3:
+            parts.append(0)
+        return tuple(parts)
 
     @staticmethod
     def safe_command_for_log(command: Iterable[str]) -> str:

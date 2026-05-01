@@ -59,10 +59,10 @@ This folder includes the app, bundled vendor tools, assets, licence, and third-p
 Output:
 
 ```text
-installer\output\SimpleYTDLP_Setup_1.0.1.exe
+installer\output\SimpleYTDLP_Setup_1.0.2.exe
 ```
 
-Distribute the versioned setup EXE, for example `SimpleYTDLP_Setup_1.0.1.exe`, to end users.
+Distribute the versioned setup EXE, for example `SimpleYTDLP_Setup_1.0.2.exe`, to end users.
 
 ## What the installer does
 
@@ -146,11 +146,11 @@ The build copies `assets\app.ico` into the app folder so the installed shortcut 
 4. Create and push a matching version tag:
 
 ```powershell
-git tag v1.0.1
-git push <remote> v1.0.1
+git tag v1.0.2
+git push <remote> v1.0.2
 ```
 
-GitHub Actions validates that `v1.0.1` matches `APP_VERSION = "1.0.1"`, builds the installer, creates a GitHub Release, and attaches the installer.
+GitHub Actions validates that `v1.0.2` matches `APP_VERSION = "1.0.2"`, builds the installer, creates a GitHub Release, and attaches the installer.
 
 For a local test build, run:
 
