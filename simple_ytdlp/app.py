@@ -115,8 +115,7 @@ class SimpleYTDLPApp(tk.Tk):
         self.details_visible = False
 
         self.title(f"{APP_DISPLAY_NAME} {APP_VERSION}")
-        self.minsize(850, 650)
-        self.geometry("950x720")
+        self.configure_window_size()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self.setup_style()
@@ -180,6 +179,14 @@ class SimpleYTDLPApp(tk.Tk):
     # ------------------------------------------------------------------
     # UI
     # ------------------------------------------------------------------
+    def configure_window_size(self) -> None:
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        width = min(950, max(760, screen_width - 80))
+        height = min(720, max(540, screen_height - 120))
+        self.minsize(760, 540)
+        self.geometry(f"{width}x{height}")
+
     def setup_style(self) -> None:
         self.configure(bg="#f4f6f8")
         style = ttk.Style(self)
@@ -209,8 +216,16 @@ class SimpleYTDLPApp(tk.Tk):
         style.configure("Treeview.Heading", font=("Segoe UI", 11, "bold"))
 
     def build_ui(self) -> None:
-        outer = ttk.Frame(self, padding=20)
-        outer.pack(fill="both", expand=True)
+        self.ui_canvas = tk.Canvas(self, bg="#f4f6f8", highlightthickness=0)
+        self.ui_scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.ui_canvas.yview)
+        self.ui_canvas.configure(yscrollcommand=self.ui_scrollbar.set)
+        self.ui_scrollbar.pack(side="right", fill="y")
+        self.ui_canvas.pack(side="left", fill="both", expand=True)
+
+        outer = ttk.Frame(self.ui_canvas, padding=20)
+        self.ui_window = self.ui_canvas.create_window((0, 0), window=outer, anchor="nw")
+        outer.bind("<Configure>", self.sync_scroll_region)
+        self.ui_canvas.bind("<Configure>", self.sync_scroll_width)
 
         ttk.Label(outer, text=APP_DISPLAY_NAME, style="Heading.TLabel").pack(anchor="w")
         ttk.Label(
@@ -278,6 +293,16 @@ class SimpleYTDLPApp(tk.Tk):
         self.save_entry.grid(row=0, column=0, sticky="ew")
         ttk.Button(save_row, text="Browse", command=self.choose_save_folder).grid(row=0, column=1, padx=(8, 0))
 
+        primary_actions = ttk.Frame(options_card, style="Card.TFrame")
+        primary_actions.grid(row=8, column=0, sticky="ew", pady=(18, 0))
+        primary_actions.columnconfigure(0, weight=1)
+        self.start_button = ttk.Button(
+            primary_actions, text="Start Download", style="Primary.TButton", command=self.start_downloads
+        )
+        self.start_button.grid(row=0, column=0, sticky="ew")
+        self.cancel_button = ttk.Button(primary_actions, text="Cancel", command=self.cancel_download, state="disabled")
+        self.cancel_button.grid(row=1, column=0, sticky="ew", pady=(8, 0))
+
         actions_card = ttk.Frame(main, style="Card.TFrame", padding=16)
         actions_card.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 12))
         actions_card.columnconfigure(0, weight=1)
@@ -288,22 +313,25 @@ class SimpleYTDLPApp(tk.Tk):
         self.progress = ttk.Progressbar(
             actions_card, orient="horizontal", mode="determinate", maximum=100, variable=self.progress_var
         )
-        self.progress.grid(row=0, column=0, columnspan=6, sticky="ew", pady=(0, 10))
+        self.progress.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         ttk.Label(actions_card, textvariable=self.status_var, style="Card.TLabel").grid(
-            row=1, column=0, columnspan=6, sticky="w", pady=(0, 10)
+            row=1, column=0, sticky="w", pady=(0, 10)
         )
 
-        self.start_button = ttk.Button(actions_card, text="Start Download", style="Primary.TButton", command=self.start_downloads)
-        self.start_button.grid(row=2, column=0, sticky="w")
-        self.cancel_button = ttk.Button(actions_card, text="Cancel", command=self.cancel_download, state="disabled")
-        self.cancel_button.grid(row=2, column=1, padx=(10, 0))
-        ttk.Button(actions_card, text="Open Downloads Folder", command=self.open_save_folder).grid(row=2, column=2, padx=(10, 0))
-        self.open_file_button = ttk.Button(actions_card, text="Open Last File", command=self.open_last_file, state="disabled")
-        self.open_file_button.grid(row=2, column=3, padx=(10, 0))
-        ttk.Button(actions_card, text="Check / Update Downloader", command=self.check_update_downloader).grid(
-            row=2, column=4, padx=(10, 0)
+        secondary_actions = ttk.Frame(actions_card, style="Card.TFrame")
+        secondary_actions.grid(row=2, column=0, sticky="w")
+        ttk.Button(secondary_actions, text="Open Downloads Folder", command=self.open_save_folder).grid(
+            row=0, column=0, sticky="w"
         )
-        ttk.Button(actions_card, text="Show Details", command=self.toggle_details).grid(row=2, column=5, padx=(10, 0))
+        self.open_file_button = ttk.Button(
+            secondary_actions, text="Open Last File", command=self.open_last_file, state="disabled"
+        )
+        self.open_file_button.grid(row=0, column=1, sticky="w", padx=(10, 0))
+        ttk.Button(secondary_actions, text="Check / Update Downloader", command=self.check_update_downloader).grid(
+            row=1, column=0, sticky="w", pady=(10, 0)
+        )
+        self.details_button = ttk.Button(secondary_actions, text="Show Details", command=self.toggle_details)
+        self.details_button.grid(row=1, column=1, sticky="w", padx=(10, 0), pady=(10, 0))
 
         queue_card = ttk.Frame(main, style="Card.TFrame", padding=16)
         queue_card.grid(row=2, column=0, sticky="nsew", padx=(0, 12))
@@ -343,6 +371,12 @@ class SimpleYTDLPApp(tk.Tk):
         if self.settings.get("show_details", False):
             self.toggle_details()
 
+    def sync_scroll_region(self, _event: tk.Event) -> None:
+        self.ui_canvas.configure(scrollregion=self.ui_canvas.bbox("all"))
+
+    def sync_scroll_width(self, event: tk.Event) -> None:
+        self.ui_canvas.itemconfigure(self.ui_window, width=event.width)
+
     def offer_clipboard_url(self) -> None:
         try:
             text = self.clipboard_get().strip()
@@ -380,6 +414,7 @@ class SimpleYTDLPApp(tk.Tk):
             self.details_frame.pack(fill="both", expand=False)
         else:
             self.details_frame.pack_forget()
+        self.details_button.configure(text="Hide Details" if self.details_visible else "Show Details")
         self.save_settings()
 
     def write_log(self, text: str) -> None:
