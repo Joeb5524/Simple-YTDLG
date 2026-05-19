@@ -46,17 +46,6 @@ The installer supports normal Windows install, upgrade, and uninstall behavior, 
 
 See [BUILD_INSTALLER.md](BUILD_INSTALLER.md) for the packaging checklist and troubleshooting notes for the two-script flow.
 
-## Publish a release
-
-GitHub Actions builds and publishes the installer automatically when you push a version tag. Make sure the tag matches `APP_VERSION` in `simple_ytdlp\app.py`:
-
-```powershell
-git tag v1.1
-git push <remote> v1.1
-```
-
-The workflow prepares dependencies, builds the GUI installer, creates a GitHub Release, and attaches the versioned setup file from `installer\output\`.
-
 ## Project layout
 
 ```text
