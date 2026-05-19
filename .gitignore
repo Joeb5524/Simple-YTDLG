@@ -17,7 +17,7 @@ installer/output/
 installer/Output/
 *.exe
 
-# Local binaries - add these manually when building
+# Bundled runtime dependencies created by scripts/get_dependencies.ps1
 vendor/yt-dlp.exe
 vendor/ffmpeg.exe
 vendor/ffprobe.exe

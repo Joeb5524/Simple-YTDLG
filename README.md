@@ -23,83 +23,39 @@ The app intentionally hides advanced `yt-dlp` options such as format codes, cook
 - Dark mode toggle
 - App update check that opens the latest GitHub Release
 - Optional details/log panel for troubleshooting
-- `Check / Update Downloader` button for bundled or PATH-based `yt-dlp`
+- `Check / Update Downloader` button for the bundled downloader
 
-## Run from source
+## Install or update the GUI
 
-Install Python 3.11+ on Windows, then run:
+Install Python 3.11 or newer on Windows, then run these two scripts from the repository root:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python run.py
+.\scripts\get_dependencies.ps1
+.\scripts\install_gui.ps1
 ```
 
-For development, the app can use `yt-dlp` and FFmpeg from your system `PATH`. For a packaged release, bundle the downloader tools in `vendor\` so the installed app is self-contained.
+`get_dependencies.ps1` prepares the Python build environment, downloads `yt-dlp.exe`, downloads FFmpeg and FFprobe, and makes sure Inno Setup 6 is available.
 
-## Bundle downloader tools
-
-For the best user experience, place these files in `vendor\` before building:
+`install_gui.ps1` builds the GUI setup file and launches it. The setup file is created here:
 
 ```text
-vendor\yt-dlp.exe
-vendor\ffmpeg.exe
-vendor\ffprobe.exe
+installer\output\SimpleYTDLP_Setup_1.1.exe
 ```
 
-You can download `yt-dlp.exe`, `ffmpeg.exe`, and `ffprobe.exe` with:
+The installer supports normal Windows install, upgrade, and uninstall behavior, including Add/Remove Programs, Start Menu shortcuts, an optional desktop shortcut, and launching the app after setup.
 
-```powershell
-.\scripts\download_tools.ps1
-```
-
-The script uses the latest `yt-dlp` Windows binary and the latest Windows GPL FFmpeg build from `yt-dlp/FFmpeg-Builds`. To skip FFmpeg and add your own build manually, run `.\scripts\download_tools.ps1 -SkipFFmpeg`.
-
-## Build the app
-
-From the repository root:
-
-```powershell
-.\scripts\build_windows.ps1
-```
-
-This creates:
-
-```text
-dist\SimpleYTDLP\SimpleYTDLP.exe
-```
-
-You can distribute the whole `dist\SimpleYTDLP\` folder directly if you do not need an installer.
-
-## Build the installer
-
-Install [Inno Setup 6](https://jrsoftware.org/isinfo.php), then build the app and installer:
-
-```powershell
-.\scripts\build_windows.ps1 -BuildInstaller
-```
-
-This creates:
-
-```text
-installer\output\SimpleYTDLP_Setup_1.0.2.exe
-```
-
-The installer supports normal Windows install/upgrade/uninstall behavior, including Add/Remove Programs, Start Menu shortcuts, optional desktop shortcut, and launching the app after setup.
-
-See [BUILD_INSTALLER.md](BUILD_INSTALLER.md) for the full packaging checklist and troubleshooting notes.
+See [BUILD_INSTALLER.md](BUILD_INSTALLER.md) for the packaging checklist and troubleshooting notes for the two-script flow.
 
 ## Publish a release
 
 GitHub Actions builds and publishes the installer automatically when you push a version tag. Make sure the tag matches `APP_VERSION` in `simple_ytdlp\app.py`:
 
 ```powershell
-git tag v1.0.2
-git push <remote> v1.0.2
+git tag v1.1
+git push <remote> v1.1
 ```
 
-The workflow downloads the bundled tools, builds the installer, creates a GitHub Release, and attaches the versioned installer from `installer\output\`.
+The workflow prepares dependencies, builds the GUI installer, creates a GitHub Release, and attaches the versioned setup file from `installer\output\`.
 
 ## Project layout
 
@@ -113,9 +69,8 @@ SimpleYTDLP/
 |-- installer/
 |   `-- SimpleYTDLP.iss
 |-- scripts/
-|   |-- build_windows.ps1
-|   |-- clean.ps1
-|   `-- download_tools.ps1
+|   |-- get_dependencies.ps1
+|   `-- install_gui.ps1
 |-- vendor/
 |   `-- .gitkeep
 |-- run.py
@@ -124,7 +79,7 @@ SimpleYTDLP/
 `-- README.md
 ```
 
-`installer\SimpleYTDLP.iss` is the installer definition used by `.\scripts\build_windows.ps1 -BuildInstaller`.
+`installer\SimpleYTDLP.iss` is the installer definition used by `.\scripts\install_gui.ps1`.
 
 ## Release notes
 

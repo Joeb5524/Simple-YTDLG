@@ -1,4 +1,4 @@
-name: Build Windows App
+name: Build Windows Installer
 
 on:
   workflow_dispatch:
@@ -38,25 +38,11 @@ jobs:
             throw "Release tag $env:GITHUB_REF_NAME does not match APP_VERSION $appVersion"
           }
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      - name: Get dependencies
+        run: powershell -ExecutionPolicy Bypass -File scripts/get_dependencies.ps1
 
-      - name: Download downloader tools
-        run: powershell -ExecutionPolicy Bypass -File scripts/download_tools.ps1
-
-      - name: Install Inno Setup
-        run: choco install innosetup -y --no-progress
-
-      - name: Build app folder and installer
-        run: powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1 -BuildInstaller
-
-      - name: Upload app folder
-        uses: actions/upload-artifact@v4
-        with:
-          name: SimpleYTDLP-Windows-App-Folder
-          path: dist/SimpleYTDLP
+      - name: Build GUI installer
+        run: powershell -ExecutionPolicy Bypass -File scripts/install_gui.ps1 -BuildOnly
 
       - name: Upload installer
         uses: actions/upload-artifact@v4

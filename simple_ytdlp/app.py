@@ -22,7 +22,6 @@ import os
 import platform
 import queue
 import re
-import shutil
 import subprocess
 import sys
 import threading
@@ -39,7 +38,7 @@ from tkinter import filedialog, messagebox, ttk
 
 APP_NAME = "SimpleYTDLP"
 APP_DISPLAY_NAME = "Simple Video Downloader"
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.1"
 APP_RELEASES_URL = "https://github.com/Joeb5524/Simple-YTDLG/releases/latest"
 APP_RELEASES_API_URL = "https://api.github.com/repos/Joeb5524/Simple-YTDLG/releases/latest"
 
@@ -85,7 +84,7 @@ class AppPaths:
 
 
 def resource_path(*parts: str) -> Path:
-    """Returns a path that works from source, PyInstaller one-dir, and PyInstaller one-file."""
+    """Returns a bundled resource path for local and packaged runs."""
     if getattr(sys, "frozen", False):
         exe_dir = Path(sys.executable).resolve().parent
         candidate = exe_dir.joinpath(*parts)
@@ -580,24 +579,21 @@ class SimpleYTDLPApp(tk.Tk):
         bundled_no_ext = resource_path("vendor", "yt-dlp")
         if bundled_no_ext.exists():
             return bundled_no_ext
-        path_hit = shutil.which("yt-dlp") or shutil.which("yt-dlp.exe")
-        return path_hit
+        return None
 
     def find_ffmpeg_dir(self) -> Optional[Path]:
         bundled_ffmpeg = resource_path("vendor", "ffmpeg.exe")
         bundled_ffprobe = resource_path("vendor", "ffprobe.exe")
         if bundled_ffmpeg.exists() and bundled_ffprobe.exists():
             return bundled_ffmpeg.parent
-        path_ffmpeg = shutil.which("ffmpeg") or shutil.which("ffmpeg.exe")
-        path_ffprobe = shutil.which("ffprobe") or shutil.which("ffprobe.exe")
-        if path_ffmpeg and path_ffprobe:
-            return Path(path_ffmpeg).parent
         return None
 
     def build_command(self, job: DownloadJob, save_dir: Path) -> list[str]:
         yt_dlp = self.find_yt_dlp()
         if yt_dlp is None:
-            raise FileNotFoundError("yt-dlp was not found. Place yt-dlp.exe in vendor/ or install it in PATH.")
+            raise FileNotFoundError(
+                "The bundled downloader was not found. Reinstall SimpleYTDLP or rebuild after running scripts\\get_dependencies.ps1."
+            )
 
         output_template = str(save_dir / "%(title).150B [%(id)s].%(ext)s")
         command = [
@@ -668,14 +664,14 @@ class SimpleYTDLPApp(tk.Tk):
         if yt_dlp is None:
             messagebox.showerror(
                 APP_DISPLAY_NAME,
-                "The downloader engine was not found.\n\nPlace yt-dlp.exe in the vendor folder before building, or install yt-dlp so it is available in PATH.",
+                "The bundled downloader engine was not found.\n\nReinstall SimpleYTDLP or rebuild after running scripts\\get_dependencies.ps1.",
             )
             return
 
         if self.find_ffmpeg_dir() is None:
             proceed = messagebox.askyesno(
                 APP_DISPLAY_NAME,
-                "FFmpeg was not found.\n\nVideo merging and MP3 conversion may fail without it. Continue anyway?",
+                "Bundled FFmpeg was not found.\n\nVideo merging and MP3 conversion may fail without it. Continue anyway?",
             )
             if not proceed:
                 return
@@ -925,7 +921,7 @@ class SimpleYTDLPApp(tk.Tk):
         if yt_dlp is None:
             messagebox.showerror(
                 APP_DISPLAY_NAME,
-                "yt-dlp was not found. Put yt-dlp.exe in the vendor folder or install yt-dlp in PATH.",
+                "The bundled downloader was not found. Reinstall SimpleYTDLP or rebuild after running scripts\\get_dependencies.ps1.",
             )
             return
 

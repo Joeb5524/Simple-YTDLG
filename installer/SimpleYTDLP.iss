@@ -3,7 +3,7 @@
 #define AppPublisher "SimpleYTDLP"
 
 #ifndef AppVersion
-  #define AppVersion "1.0.2"
+  #define AppVersion "1.1"
 #endif
 
 #ifndef SourceDir
